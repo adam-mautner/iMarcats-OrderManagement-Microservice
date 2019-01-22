@@ -57,6 +57,9 @@ public class OrderRestController {
 	@Autowired
 	@Qualifier("OrderDatastoreImpl")
 	protected OrderDatastore orderDatastore;
+
+	@Autowired
+	protected OrderManagementContext orderManagementContext;
 	
 	@RequestMapping(value = "/orders/**/{marketCode}", method = RequestMethod.GET, produces = { "application/JSON" })
 	public PagedOrderListDto getOrdersByMarket(@PathVariable String marketCode, 
@@ -72,7 +75,7 @@ public class OrderRestController {
 	public void createNewOrder(@PathVariable String marketCode, @RequestBody OrderDto order) {
 		// TODO: Identify user
 		String user = "Adam";
-		orderManagementSystem.createOrder(marketCode, OrderDtoMapping.INSTANCE.fromDto(order), user, createOrderManagementContext());
+		orderManagementSystem.createOrder(marketCode, OrderDtoMapping.INSTANCE.fromDto(order), user, orderManagementContext);
 	}
 
 	@RequestMapping(value = "/myOrders/**/{userId}", method = RequestMethod.GET, produces = { "application/JSON" })
@@ -96,7 +99,7 @@ public class OrderRestController {
 	public void updateOrder(@PathVariable String orderId, @RequestBody PropertyChangeWrapperDto propertyChangesDto) {
 		// TODO: Identify user
 		String user = "Adam";
-		orderManagementSystem.changeOrderProperties(Long.valueOf(orderId), propertyChangesDto.getPropertyChanges(), user, createOrderManagementContext());
+		orderManagementSystem.changeOrderProperties(Long.valueOf(orderId), propertyChangesDto.getPropertyChanges(), user, orderManagementContext);
 	}
 	
 	@Transactional
@@ -104,7 +107,7 @@ public class OrderRestController {
 	public void deleteOrder(@PathVariable String orderId) {
 		// TODO: Identify user
 		String user = "Adam";
-		orderManagementSystem.deleteOrder(Long.valueOf(orderId), user, createOrderManagementContext());
+		orderManagementSystem.deleteOrder(Long.valueOf(orderId), user, orderManagementContext);
 	}
 	
 	@RequestMapping(value = "/mySubmittedOrders/**/{userId}", method = RequestMethod.GET, produces = { "application/JSON" })
@@ -125,7 +128,7 @@ public class OrderRestController {
 		// TODO: Identify user
 		String user = "Adam";
 		
-		orderManagementSystem.cancelAllOrdersForUser(user, createOrderManagementContext());
+		orderManagementSystem.cancelAllOrdersForUser(user, orderManagementContext);
 	}
 	
 	@Transactional
@@ -134,7 +137,7 @@ public class OrderRestController {
 		// TODO: Identify user
 		String user = "Adam";
 		// TODO: Check the version number 
-		orderManagementSystem.submitOrder(Long.valueOf(submitCancelDto.getOrderKey()), user, createOrderManagementContext());
+		orderManagementSystem.submitOrder(Long.valueOf(submitCancelDto.getOrderKey()), user, orderManagementContext);
 	}
 	
 	@Transactional
@@ -142,7 +145,7 @@ public class OrderRestController {
 	public void cancelOrder(@PathVariable String orderId) {
 		// TODO: Identify user
 		String user = "Adam";
-		orderManagementSystem.cancelOrder(Long.valueOf(orderId), user, createOrderManagementContext());
+		orderManagementSystem.cancelOrder(Long.valueOf(orderId), user, orderManagementContext);
 	}
 	
 	public static Pageable createPageable(String cursorString_,
@@ -174,163 +177,5 @@ public class OrderRestController {
 		} 
 		
 		return OrderDtoMapping.INSTANCE.toDto(orders);
-	}
-	
-	// TODO: Create a real implementation here 
-	private OrderManagementContext createOrderManagementContext() {
-		MarketDataSession marketDataSession = new MockMarketDataSessionImpl(new MarketDataSource() {
-			
-			@Override
-			public void removeMarketDataChangeListener(Long arg0) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public void notifyListeners(MarketDataChange[] arg0) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public NotificationBroker getNotificationBroker() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-			
-			@Override
-			public Long addMarketDataChangeListener(String arg0, MarketDataType arg1, PersistedMarketDataChangeListener arg2) {
-				// TODO Auto-generated method stub
-				return null;
-			}
-		});
-		PropertyChangeSession propertyChangeSession = new MockPropertyChangeSessionImpl(new PropertyChangeBroker() {
-			
-			@Override
-			public void removePropertyChangeListener(Long arg0) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public void notifyListeners(PropertyChanges[] arg0) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public NotificationBroker getNotificationBroker() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-			
-			@Override
-			public Long addPropertyChangeListener(DatastoreKey arg0, Class arg1, PersistedPropertyChangeListener arg2) {
-				// TODO Auto-generated method stub
-				return null;
-			}
-		});
-		TradeNotificationSession tradeNotificationSession = new MockTradeNotificationSessionImpl(new TradeNotificationBroker() {
-			
-			@Override
-			public void notifyListeners(MatchedTradeDto[] arg0) {
-				// TODO Auto-generated method stub
-				
-			}
-			
-			@Override
-			public NotificationBroker getNotificationBroker() {
-				// TODO Auto-generated method stub
-				return null;
-			}
-		});  
-		
-		OrderManagementContext context = new OrderManagementContextImpl(
-				marketDataSession,
-				propertyChangeSession,
-				tradeNotificationSession);
-		return context;
-	}
-	
-	private class MockMarketDataSessionImpl extends MarketDataSessionImpl {
-		private final List<MarketDataChange> _dataChanges = new ArrayList<MarketDataChange>();
-
-		public MockMarketDataSessionImpl(MarketDataSource marketDataSource_) {
-			super(marketDataSource_);
-		}
-		
-		protected void notify(MarketDataChange change) {
-			_dataChanges.add(change);
-		}
-		
-		public void commit() {
-			// clear the market data changes already sent to prevent duplications
-			_dataChanges.clear();
-		}
-		
-		public void rollback() {
-			_dataChanges.clear();
-		}
-
-		public MarketDataChange[] getMarketDataChanges() {
-			return _dataChanges.toArray(new MarketDataChange[_dataChanges.size()]);
-		}
-	}
-	
-	private class MockPropertyChangeSessionImpl extends PropertyChangeSessionImpl {
-
-		private final List<PropertyChanges> _propertyChanges = new ArrayList<PropertyChanges>();
-
-		public MockPropertyChangeSessionImpl(PropertyChangeBroker propertyChangeBroker_) {
-			super(propertyChangeBroker_);
-		}
-
-		public void commit() {
-			// _propertyChangeBroker.notifyListeners(getPropertyChanges());
-			// clear the property changes already sent to prevent duplications
-			_propertyChanges.clear();
-		}
-		
-		public void rollback() {
-			_propertyChanges.clear();
-		}
-		
-		public PropertyChanges[] getPropertyChanges() {
-			return _propertyChanges.toArray(new PropertyChanges[_propertyChanges.size()]);
-		}
-
-		protected void notify(Class objectClass_, Date changeTimestamp_,
-				ObjectVersion version_, String owner_, ChangeOrigin changeOrigin_,
-				PropertyChangeDto[] propertyChangeDtos,
-				DatastoreKeyDto parentKeyDto, DatastoreKeyDto objectKeyDto) {
-			_propertyChanges.add(new PropertyChanges(objectKeyDto, objectClass_, parentKeyDto, 
-					propertyChangeDtos, changeTimestamp_, version_, owner_, changeOrigin_));
-		}
-	}
-	
-	private class MockTradeNotificationSessionImpl extends TradeNotificationSessionImpl {
-		private final List<MatchedTradeDto> _matchedTrades = new ArrayList<MatchedTradeDto>();
-		
-		public MockTradeNotificationSessionImpl(
-				TradeNotificationBroker tradeNotificationBroker_) {
-			super(tradeNotificationBroker_);
-		}
-
-		protected void notify(MatchedTradeDto clonedMatchedTrade) {
-			_matchedTrades.add(clonedMatchedTrade);
-		}
-
-		public MatchedTradeDto[] getTrades() {
-			return _matchedTrades.toArray(new MatchedTradeDto[_matchedTrades.size()]);
-		}
-		
-		public void commit() {
-			// clear changes already sent to prevent duplications
-			_matchedTrades.clear();
-		}
-		
-		public void rollback() {
-			// TODO Auto-generated method stub	
-		}
 	}
 }
