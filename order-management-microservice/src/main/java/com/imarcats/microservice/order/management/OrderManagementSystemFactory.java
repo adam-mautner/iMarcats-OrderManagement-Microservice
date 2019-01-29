@@ -1,21 +1,10 @@
 package com.imarcats.microservice.order.management;
 
-import java.sql.Date;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import com.imarcats.interfaces.client.v100.dto.MatchedTradeDto;
-import com.imarcats.interfaces.client.v100.dto.types.DatastoreKeyDto;
-import com.imarcats.interfaces.client.v100.dto.types.PropertyChangeDto;
-import com.imarcats.interfaces.client.v100.notification.ChangeOrigin;
-import com.imarcats.interfaces.client.v100.notification.MarketDataChange;
-import com.imarcats.interfaces.client.v100.notification.ObjectVersion;
-import com.imarcats.interfaces.client.v100.notification.PropertyChanges;
 import com.imarcats.internal.server.infrastructure.datastore.MarketDatastore;
 import com.imarcats.internal.server.infrastructure.datastore.MatchedTradeDatastore;
 import com.imarcats.internal.server.infrastructure.datastore.OrderDatastore;
@@ -42,6 +31,7 @@ import com.imarcats.market.engine.order.OrderManagementSystem;
 import com.imarcats.market.engine.order.OrderSubmitActionRequestor;
 import com.imarcats.microservice.order.management.notification.KafkaMessageBroker;
 import com.imarcats.microservice.order.management.notification.NotificationBrokerImpl;
+import com.imarcats.microservice.order.management.order.OrderActionRequestor;
 
 @Configuration
 public class OrderManagementSystemFactory {
@@ -60,19 +50,21 @@ public class OrderManagementSystemFactory {
 	
 	@Autowired
 	protected KafkaMessageBroker kafkaMessageBroker;
+
+	@Autowired
+	protected OrderActionRequestor orderActionRequestor;
 	
 	@Bean
 	public OrderManagementSystem createOrderManagementSystem() {
-		MockOrderActionRequestor mockOrderActionRequestor = new MockOrderActionRequestor();
-		return new OrderManagementSystem(marketDatastore, orderDatastore, tradeDatastore, mockOrderActionRequestor, mockOrderActionRequestor);
+		return new OrderManagementSystem(marketDatastore, orderDatastore, tradeDatastore, orderActionRequestor, orderActionRequestor);
 	}
 	
-	private class MockOrderActionRequestor implements OrderSubmitActionRequestor, OrderCancelActionRequestor {
+	private class MockOrderActionRequestor1 implements OrderSubmitActionRequestor, OrderCancelActionRequestor {
 		
 		private OrderSubmitActionExecutor _orderSubmitActionExecutor;
 		private OrderCancelActionExecutor _orderCancelActionExecutor;
 
-		public MockOrderActionRequestor() {
+		public MockOrderActionRequestor1() {
 			super();
 			_orderSubmitActionExecutor = new OrderSubmitActionExecutor(marketDatastore, orderDatastore);
 			_orderCancelActionExecutor = new OrderCancelActionExecutor(marketDatastore, orderDatastore);
@@ -110,87 +102,5 @@ public class OrderManagementSystemFactory {
 				propertyChangeSession,
 				tradeNotificationSession);
 		return context;
-	}
-	
-	private class MockMarketDataSessionImpl extends MarketDataSessionImpl {
-		private final List<MarketDataChange> _dataChanges = new ArrayList<MarketDataChange>();
-
-		public MockMarketDataSessionImpl(MarketDataSource marketDataSource_) {
-			super(marketDataSource_);
-		}
-		
-		protected void notify(MarketDataChange change) {
-			_dataChanges.add(change);
-		}
-		
-		public void commit() {
-			// clear the market data changes already sent to prevent duplications
-			_dataChanges.clear();
-		}
-		
-		public void rollback() {
-			_dataChanges.clear();
-		}
-
-		public MarketDataChange[] getMarketDataChanges() {
-			return _dataChanges.toArray(new MarketDataChange[_dataChanges.size()]);
-		}
-	}
-	
-	private class MockPropertyChangeSessionImpl extends PropertyChangeSessionImpl {
-
-		private final List<PropertyChanges> _propertyChanges = new ArrayList<PropertyChanges>();
-
-		public MockPropertyChangeSessionImpl(PropertyChangeBroker propertyChangeBroker_) {
-			super(propertyChangeBroker_);
-		}
-
-		public void commit() {
-			// _propertyChangeBroker.notifyListeners(getPropertyChanges());
-			// clear the property changes already sent to prevent duplications
-			_propertyChanges.clear();
-		}
-		
-		public void rollback() {
-			_propertyChanges.clear();
-		}
-		
-		public PropertyChanges[] getPropertyChanges() {
-			return _propertyChanges.toArray(new PropertyChanges[_propertyChanges.size()]);
-		}
-
-		protected void notify(Class objectClass_, Date changeTimestamp_,
-				ObjectVersion version_, String owner_, ChangeOrigin changeOrigin_,
-				PropertyChangeDto[] propertyChangeDtos,
-				DatastoreKeyDto parentKeyDto, DatastoreKeyDto objectKeyDto) {
-			_propertyChanges.add(new PropertyChanges(objectKeyDto, objectClass_, parentKeyDto, 
-					propertyChangeDtos, changeTimestamp_, version_, owner_, changeOrigin_));
-		}
-	}
-	
-	private class MockTradeNotificationSessionImpl extends TradeNotificationSessionImpl {
-		private final List<MatchedTradeDto> _matchedTrades = new ArrayList<MatchedTradeDto>();
-		
-		public MockTradeNotificationSessionImpl(
-				TradeNotificationBroker tradeNotificationBroker_) {
-			super(tradeNotificationBroker_);
-		}
-
-		protected void notify(MatchedTradeDto clonedMatchedTrade) {
-			_matchedTrades.add(clonedMatchedTrade);
-		}
-
-		public MatchedTradeDto[] getTrades() {
-			return _matchedTrades.toArray(new MatchedTradeDto[_matchedTrades.size()]);
-		}
-		
-		public void commit() {
-			// clear changes already sent to prevent duplications
-			_matchedTrades.clear();
-		}
-		
-		public void rollback() {
-			// TODO Auto-generated method stub	
-		}
 	}
 }
