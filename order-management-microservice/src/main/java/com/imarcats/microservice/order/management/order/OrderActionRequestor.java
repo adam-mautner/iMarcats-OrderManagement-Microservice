@@ -32,8 +32,9 @@ public class OrderActionRequestor implements OrderSubmitActionRequestor, OrderCa
 		actionMessage.setMarketCode(orderInternal_.getOrderModel().getTargetMarketCode());
 		actionMessage.setOrderAction(OrderAction.Cancel);
 		actionMessage.setCancellationCommentLanguageKey(cancellationCommentLanguageKey_);
+		actionMessage.setVersion(orderInternal_.getOrderModel().getVersionNumber());
 		
-		sendMessage(actionMessage); 
+		sendMessage(actionMessage, orderInternal_.getOrderModel().getTargetMarketCode()); 
 	}
 
 	@Override
@@ -43,12 +44,14 @@ public class OrderActionRequestor implements OrderSubmitActionRequestor, OrderCa
 		actionMessage.setOrderKey(orderInternal_.getKey());
 		actionMessage.setMarketCode(orderInternal_.getOrderModel().getTargetMarketCode());
 		actionMessage.setOrderAction(OrderAction.Submit);
+		actionMessage.setVersion(orderInternal_.getOrderModel().getVersionNumber());
 		
-		sendMessage(actionMessage); 
+		sendMessage(actionMessage, orderInternal_.getOrderModel().getTargetMarketCode()); 
 	}
 	
-	private void sendMessage(OrderActionMessage message) {
-		orderActionMessageKafkaTemplate.send(IMARCATS_ORDER_QUEUE, message);
+	private void sendMessage(OrderActionMessage message, String marketCode) {
+		orderActionMessageKafkaTemplate.send(IMARCATS_ORDER_QUEUE, marketCode, message);
 	}
+
 
 }

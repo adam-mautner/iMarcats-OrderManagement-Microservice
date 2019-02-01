@@ -19,10 +19,10 @@ public class GeneralConfigurationFactory {
 		return factoryBean;
 	}
 
-	@Bean
-	public PlatformTransactionManager transactionManager() {
+	@Bean(name = "transactionManager")
+	public JpaTransactionManager transactionManager(LocalContainerEntityManagerFactoryBean entityManagerFactory) {
 		JpaTransactionManager transactionManager = new JpaTransactionManager();
-		transactionManager.setEntityManagerFactory(entityManagerFactory().getObject());
+		transactionManager.setEntityManagerFactory(entityManagerFactory.getObject());
 		return transactionManager;
 	}
 	
