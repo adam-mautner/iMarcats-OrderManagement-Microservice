@@ -1,7 +1,7 @@
 package com.imarcats.microservice.order.management.order;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Service;
 
 import com.imarcats.internal.server.interfaces.order.OrderInternal;
@@ -13,10 +13,9 @@ import com.imarcats.market.engine.order.OrderSubmitActionRequestor;
 public class OrderActionRequestor implements OrderSubmitActionRequestor, OrderCancelActionRequestor {
 	
 	@Autowired
-	private KafkaTemplate<String, OrderActionMessage> orderActionMessageKafkaTemplate;
+	JmsTemplate jmsTemplate;
 	
-	// We have to set the topic to the one we set up for Kafka Docker - I know,
-	// hardcoded topic - again :)
+	// TODO: Setup a scalable queue/topic name QUEUE_NAME_x/TOPIC_NAME_x
 	public static final String IMARCATS_ORDER_QUEUE = "imarcats_order_q";
 	
 	public OrderActionRequestor() {
@@ -50,7 +49,9 @@ public class OrderActionRequestor implements OrderSubmitActionRequestor, OrderCa
 	}
 	
 	private void sendMessage(OrderActionMessage message, String marketCode) {
-		orderActionMessageKafkaTemplate.send(IMARCATS_ORDER_QUEUE, marketCode, message);
+		// TODO: Set the destination to a queue 
+		// Set message grouping to (ordering): marketCode
+		jmsTemplate.convertAndSend(IMARCATS_ORDER_QUEUE, message);
 	}
 
 

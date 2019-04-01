@@ -1,7 +1,7 @@
 package com.imarcats.microservice.order.management.notification;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.stereotype.Component;
 
 import com.imarcats.interfaces.client.v100.dto.types.TradeSideDto;
@@ -15,22 +15,12 @@ import com.imarcats.model.Order;
 import com.imarcats.model.types.DatastoreKey;
 
 @Component
-public class KafkaMessageBroker {
+public class JmsMessageBroker {
 	
 	@Autowired
-	private KafkaTemplate<String, MarketDataChange> marketDataChangeKafkaTemplate;
+	JmsTemplate jmsTemplate;
 
-	@Autowired
-	private KafkaTemplate<String, PropertyChanges> propertyChangesKafkaTemplate;
-	
-	@Autowired
-	private KafkaTemplate<String, TradeActionMessage> tradeActionMessageKafkaTemplate;
-
-	@Autowired
-	private KafkaTemplate<String, TradeSideDto> tradeSideKafkaTemplate;
-	
-	// We have to set the topic to the one we set up for Kafka Docker - I know,
-	// hardcoded topic - again :)
+	// TODO: Setup a scalable queue/topic name QUEUE_NAME_x/TOPIC_NAME_x
 	private static final String IMARCATS_MARKET_CHANGE = "imarcats_market_change";
 	private static final String IMARCATS_MARKETDATA = "imarcats_marketdata";
 	private static final String IMARCATS_ORDER_CHANGE = "imarcats_order_change";
@@ -69,7 +59,7 @@ public class KafkaMessageBroker {
 //			_changeHandler.notifyListeners(new ListenerCallParameters(call.getId(), call, filterString_, call.getListenerCallTimestamp(), "callTask"));
 		} else if(parameters_ instanceof MarketDataChange) {
 			MarketDataChange marketDataChange = (MarketDataChange) parameters_;
-			marketDataChangeKafkaTemplate.send(IMARCATS_MARKETDATA, marketDataChange);
+			jmsTemplate.convertAndSend(IMARCATS_MARKETDATA, marketDataChange);
 			
 //			_changeHandler.notifyListeners(new ListenerCallParameters(call.getId(), call, filterString_, call.getListenerCallTimestamp(), "callTask"));
 		}
@@ -84,10 +74,16 @@ public class KafkaMessageBroker {
 	private void sendPropertyChangeNotification(DatastoreKey observedObject_, Class observedObjectClass_,
 			PropertyChanges propertyChanges) {
 		if(Market.class.equals(observedObjectClass_)) {
-			propertyChangesKafkaTemplate.send(IMARCATS_MARKET_CHANGE, createMarketKey(propertyChanges.getParentObject().getCodeKey()), propertyChanges);
+			// TODO: Set the destination to a topic 
+			// Set message grouping to (ordering): createMarketKey(propertyChanges.getParentObject().getCodeKey())
+			jmsTemplate.convertAndSend(IMARCATS_MARKET_CHANGE, propertyChanges);
 		} else if(Order.class.equals(observedObjectClass_)) {
-			propertyChangesKafkaTemplate.send(IMARCATS_ORDER_CHANGE, createMarketUserKey(propertyChanges.getParentObject().getCodeKey(), propertyChanges.getObjectOwner()), propertyChanges);
-			propertyChangesKafkaTemplate.send(IMARCATS_ORDER_CHANGE, createMarketKey(propertyChanges.getParentObject().getCodeKey()), propertyChanges);
+			// TODO: Set the destination to a topic 
+			// Set message grouping to (ordering): createMarketUserKey(propertyChanges.getParentObject().getCodeKey(), propertyChanges.getObjectOwner())
+			jmsTemplate.convertAndSend(IMARCATS_ORDER_CHANGE, propertyChanges);
+			// TODO: Set the destination to a topic 
+			// Set message grouping to (ordering): createMarketKey(propertyChanges.getParentObject().getCodeKey())
+			jmsTemplate.convertAndSend(IMARCATS_ORDER_CHANGE, propertyChanges);
 			
 		}
 		
@@ -95,15 +91,19 @@ public class KafkaMessageBroker {
 	}
 
 	private void sendTradeNotification(TradeSideDto tradeSide_) {
-		tradeSideKafkaTemplate.send(IMARCATS_TRADES, createMarketUserKey(tradeSide_.getMarketOfTheTrade(), tradeSide_.getTraderID()), tradeSide_);
-		tradeSideKafkaTemplate.send(IMARCATS_TRADES, createUserKey(tradeSide_.getTraderID()), tradeSide_);
+		// TODO: Set the destination to a queue 
+		// Set message grouping to (ordering): createMarketUserKey(tradeSide_.getMarketOfTheTrade(), tradeSide_.getTraderID())
+		jmsTemplate.convertAndSend(IMARCATS_TRADES, tradeSide_);
+		// TODO: Set the destination to a queue 
+		// Set message grouping to (ordering): createUserKey(tradeSide_.getTraderID())
+		jmsTemplate.convertAndSend(IMARCATS_TRADES, tradeSide_);
 		
 		TradeActionMessage tradeActionMessage = new TradeActionMessage();
 		tradeActionMessage.setTransactionID(tradeSide_.getTransactionID());
 		tradeActionMessage.setMarketCode(tradeSide_.getMarketOfTheTrade());
 		tradeActionMessage.setSide(tradeSide_.getSide()); 
 		
-		tradeActionMessageKafkaTemplate.send(IMARCATS_TRADES_TRASACTIONS, tradeActionMessage);
+		jmsTemplate.convertAndSend(IMARCATS_TRADES_TRASACTIONS, tradeActionMessage);
 	}
 
 	private String createMarketUserKey(String market, String user) {

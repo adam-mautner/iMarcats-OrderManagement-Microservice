@@ -4,12 +4,7 @@ import javax.annotation.PostConstruct;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.annotation.PartitionOffset;
-import org.springframework.kafka.annotation.TopicPartition;
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.handler.annotation.Header;
+import org.springframework.jms.annotation.JmsListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,11 +39,9 @@ public class OrderActionExecutor {
 		orderCancelActionExecutor = new OrderCancelActionExecutor(marketDatastore, orderDatastore);
 	}
 
-	@KafkaListener(topicPartitions = @TopicPartition(topic = OrderActionRequestor.IMARCATS_ORDER_QUEUE, partitionOffsets = {
-			@PartitionOffset(partition = "0", initialOffset = "0") }))
+	@JmsListener(destination = OrderActionRequestor.IMARCATS_ORDER_QUEUE, containerFactory = "myFactory")
 	@Transactional
-	public void listenToOrderActionQueueParition(@Payload OrderActionMessage message,
-			@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition, @Header(KafkaHeaders.OFFSET) int offset) {
+	public void listenToOrderActionQueueParition(@Payload OrderActionMessage message) {
 
 		// this is needed, because Kafka message arrives faster than the actual change is committed to the datastore (because of the lack of transactions) 
 		// TODO: Remove it once the transactions are correct

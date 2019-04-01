@@ -29,7 +29,7 @@ import com.imarcats.market.engine.matching.OrderSubmitActionExecutor;
 import com.imarcats.market.engine.order.OrderCancelActionRequestor;
 import com.imarcats.market.engine.order.OrderManagementSystem;
 import com.imarcats.market.engine.order.OrderSubmitActionRequestor;
-import com.imarcats.microservice.order.management.notification.KafkaMessageBroker;
+import com.imarcats.microservice.order.management.notification.JmsMessageBroker;
 import com.imarcats.microservice.order.management.notification.NotificationBrokerImpl;
 import com.imarcats.microservice.order.management.order.OrderActionRequestor;
 
@@ -49,7 +49,7 @@ public class OrderManagementSystemFactory {
 	protected MatchedTradeDatastore tradeDatastore;
 	
 	@Autowired
-	protected KafkaMessageBroker kafkaMessageBroker;
+	protected JmsMessageBroker kafkaMessageBroker;
 
 	@Autowired
 	protected OrderActionRequestor orderActionRequestor;

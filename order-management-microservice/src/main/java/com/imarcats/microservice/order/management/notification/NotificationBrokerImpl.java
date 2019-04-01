@@ -8,9 +8,9 @@ import com.imarcats.model.types.DatastoreKey;
 
 public class NotificationBrokerImpl implements NotificationBroker {
 
-	private KafkaMessageBroker kafkaMessageBroker;
+	private JmsMessageBroker kafkaMessageBroker;
 
-	public NotificationBrokerImpl(KafkaMessageBroker kafkaMessageBroker) {
+	public NotificationBrokerImpl(JmsMessageBroker kafkaMessageBroker) {
 		super();
 		this.kafkaMessageBroker = kafkaMessageBroker;
 	}
