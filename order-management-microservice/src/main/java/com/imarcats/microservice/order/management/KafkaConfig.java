@@ -22,7 +22,6 @@ import com.imarcats.interfaces.client.v100.notification.PropertyChanges;
 import com.imarcats.microservice.order.management.notification.JsonPOJODeserializer;
 import com.imarcats.microservice.order.management.notification.JsonPOJOSerializer;
 import com.imarcats.microservice.order.management.notification.TradeActionMessage;
-import com.imarcats.microservice.order.management.order.OrderActionMessage;
 
 @Configuration
 public class KafkaConfig {
@@ -80,12 +79,12 @@ public class KafkaConfig {
     }
     
     @Bean
-    public KafkaTemplate<String, OrderActionMessage> kafkaOrderActionMessageTemplate() {
-        return new KafkaTemplate<>(producerOrderActionMessageFactory());
+    public KafkaTemplate<String, UpdateMessage> kafkaUpdateMessageTemplate() {
+        return new KafkaTemplate<>(producerUpdateMessageFactory());
     }
     
 	@Bean
-    public ProducerFactory<String, OrderActionMessage> producerOrderActionMessageFactory() {
+    public ProducerFactory<String, UpdateMessage> producerUpdateMessageFactory() {
         Map<String, Object> configProps = new HashMap<>();
         setDefaults(configProps);
         return new DefaultKafkaProducerFactory<>(configProps);
@@ -93,20 +92,20 @@ public class KafkaConfig {
     
 	// consumer 
     @Bean
-    public ConsumerFactory<String, OrderActionMessage> consumerFactory() {
+    public ConsumerFactory<String, UpdateMessage> consumerFactory() {
         Map<String, Object> configProps = new HashMap<>();
         setDefaults(configProps);
         configProps.put(
         	"JsonPOJOClass", 
-        	OrderActionMessage.class);
+        	UpdateMessage.class);
         return new DefaultKafkaConsumerFactory<>(configProps);
     }
  
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, OrderActionMessage> 
+    public ConcurrentKafkaListenerContainerFactory<String, UpdateMessage> 
       kafkaListenerContainerFactory() {
     
-        ConcurrentKafkaListenerContainerFactory<String, OrderActionMessage> factory
+        ConcurrentKafkaListenerContainerFactory<String, UpdateMessage> factory
           = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
         return factory;

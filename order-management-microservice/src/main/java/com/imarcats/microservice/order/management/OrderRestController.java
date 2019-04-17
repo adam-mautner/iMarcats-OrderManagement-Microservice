@@ -1,8 +1,5 @@
 package com.imarcats.microservice.order.management;
 
-import java.sql.Date;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,34 +14,15 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.imarcats.interfaces.client.v100.dto.MatchedTradeDto;
 import com.imarcats.interfaces.client.v100.dto.OrderDto;
-import com.imarcats.interfaces.client.v100.dto.types.DatastoreKeyDto;
-import com.imarcats.interfaces.client.v100.dto.types.MarketDataType;
 import com.imarcats.interfaces.client.v100.dto.types.PagedOrderListDto;
-import com.imarcats.interfaces.client.v100.dto.types.PropertyChangeDto;
-import com.imarcats.interfaces.client.v100.notification.ChangeOrigin;
-import com.imarcats.interfaces.client.v100.notification.MarketDataChange;
-import com.imarcats.interfaces.client.v100.notification.ObjectVersion;
-import com.imarcats.interfaces.client.v100.notification.PropertyChanges;
+import com.imarcats.interfaces.server.v100.dto.mapping.MarketDtoMapping;
 import com.imarcats.interfaces.server.v100.dto.mapping.OrderDtoMapping;
+import com.imarcats.internal.server.infrastructure.datastore.MarketDatastore;
 import com.imarcats.internal.server.infrastructure.datastore.OrderDatastore;
-import com.imarcats.internal.server.infrastructure.marketdata.MarketDataSession;
-import com.imarcats.internal.server.infrastructure.marketdata.MarketDataSessionImpl;
-import com.imarcats.internal.server.infrastructure.marketdata.MarketDataSource;
-import com.imarcats.internal.server.infrastructure.marketdata.PersistedMarketDataChangeListener;
-import com.imarcats.internal.server.infrastructure.notification.NotificationBroker;
-import com.imarcats.internal.server.infrastructure.notification.properties.PersistedPropertyChangeListener;
-import com.imarcats.internal.server.infrastructure.notification.properties.PropertyChangeBroker;
-import com.imarcats.internal.server.infrastructure.notification.properties.PropertyChangeSession;
-import com.imarcats.internal.server.infrastructure.notification.properties.PropertyChangeSessionImpl;
-import com.imarcats.internal.server.infrastructure.notification.trades.TradeNotificationBroker;
-import com.imarcats.internal.server.infrastructure.notification.trades.TradeNotificationSession;
-import com.imarcats.internal.server.infrastructure.notification.trades.TradeNotificationSessionImpl;
+import com.imarcats.internal.server.interfaces.market.MarketInternal;
 import com.imarcats.internal.server.interfaces.order.OrderManagementContext;
-import com.imarcats.internal.server.interfaces.order.OrderManagementContextImpl;
 import com.imarcats.market.engine.order.OrderManagementSystem;
-import com.imarcats.model.types.DatastoreKey;
 import com.imarcats.model.types.PagedOrderList;
 
 @RestController
@@ -60,6 +38,13 @@ public class OrderRestController {
 
 	@Autowired
 	protected OrderManagementContext orderManagementContext;
+	
+	@Autowired
+	protected ActionRequestor actionRequestor;
+	
+	@Autowired
+	@Qualifier("MarketDatastoreImpl")
+	protected MarketDatastore marketDatastore;
 	
 	@RequestMapping(value = "/orders/**/{marketCode}", method = RequestMethod.GET, produces = { "application/JSON" })
 	public PagedOrderListDto getOrdersByMarket(@PathVariable String marketCode, 
@@ -146,6 +131,21 @@ public class OrderRestController {
 		// TODO: Identify user
 		String user = "Adam";
 		orderManagementSystem.cancelOrder(Long.valueOf(orderId), user, orderManagementContext);
+	}
+	
+	@Transactional
+	@RequestMapping(value = "/activeMarkets", method = RequestMethod.POST, consumes = "application/json")
+	public void activateMarket(@RequestBody ActivationDto activationDto) {
+		// TODO: Later we will receive the market here and save it to DB
+		MarketInternal marketInternal = marketDatastore.findMarketBy(activationDto.getCode());
+		actionRequestor.createActiveMarket(MarketDtoMapping.INSTANCE.toDto(marketInternal.getMarketModel()));
+	}
+	
+	@Transactional
+	@RequestMapping(value = "/activeMarkets/{MarketCode}", method = RequestMethod.DELETE)
+	public void deactivateMarket(@PathVariable String marketCode) {
+		// TODO: Later we will delete the market here 
+		actionRequestor.deleteActiveMarket(marketCode);
 	}
 	
 	public static Pageable createPageable(String cursorString_,
