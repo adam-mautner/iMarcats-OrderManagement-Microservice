@@ -4,7 +4,7 @@ import java.util.Date;
 
 import com.imarcats.interfaces.client.v100.dto.types.TimeOfDayDto;
 
-public class ActivationDto {
+public class MarketActionDto {
 	private String code; 
 	private Date nextCallDate;
 	private TimeOfDayDto nextMarketCallTime;

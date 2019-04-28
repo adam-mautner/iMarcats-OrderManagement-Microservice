@@ -135,7 +135,7 @@ public class OrderRestController {
 	
 	@Transactional
 	@RequestMapping(value = "/activeMarkets", method = RequestMethod.POST, consumes = "application/json")
-	public void activateMarket(@RequestBody ActivationDto activationDto) {
+	public void activateMarket(@RequestBody MarketActionDto activationDto) {
 		// TODO: Later we will receive the market here and save it to DB
 		MarketInternal marketInternal = marketDatastore.findMarketBy(activationDto.getCode());
 		actionRequestor.createActiveMarket(MarketDtoMapping.INSTANCE.toDto(marketInternal.getMarketModel()));
@@ -147,6 +147,27 @@ public class OrderRestController {
 		// TODO: Later we will delete the market here 
 		actionRequestor.deleteActiveMarket(marketCode);
 	}
+
+	@Transactional
+	@RequestMapping(value = "/openMarkets", method = RequestMethod.POST, consumes = "application/json")
+	public void openMarket(@RequestBody MarketActionDto openDto) {
+		// TODO: Later we will hate to mark the market open in the DB
+		actionRequestor.openMarket(openDto.getCode());
+	}
+	
+	@Transactional
+	@RequestMapping(value = "/openMarkets/{MarketCode}", method = RequestMethod.DELETE)
+	public void closeMarket(@PathVariable String marketCode) {
+		// TODO: Later we will hate to mark the market closed in the DB
+		actionRequestor.closeMarket(marketCode);
+	}
+
+	@Transactional
+	@RequestMapping(value = "/calledMarkets", method = RequestMethod.POST, consumes = "application/json")
+	public void callMarket(@RequestBody MarketActionDto callDto) {
+		actionRequestor.callMarket(callDto.getCode(), callDto.getNextCallDate(), callDto.getNextMarketCallTime());
+	}
+	
 	
 	public static Pageable createPageable(String cursorString_,
 			int numberOnPage_) {

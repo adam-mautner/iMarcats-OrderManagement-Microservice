@@ -1,17 +1,23 @@
 package com.imarcats.microservice.order.management;
 
+import java.util.Date;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import com.imarcats.interfaces.client.v100.dto.MarketDto;
+import com.imarcats.interfaces.client.v100.dto.types.TimeOfDayDto;
 import com.imarcats.interfaces.server.v100.dto.mapping.OrderDtoMapping;
 import com.imarcats.internal.server.interfaces.order.OrderInternal;
 import com.imarcats.internal.server.interfaces.order.OrderManagementContext;
 import com.imarcats.market.engine.order.OrderCancelActionRequestor;
 import com.imarcats.market.engine.order.OrderSubmitActionRequestor;
+import com.imarcats.microservice.order.management.market.CallMarketMessage;
+import com.imarcats.microservice.order.management.market.CloseMarketMessage;
 import com.imarcats.microservice.order.management.market.CreateActiveMarketMessage;
 import com.imarcats.microservice.order.management.market.DeleteActiveMarketMessage;
+import com.imarcats.microservice.order.management.market.OpenMarketMessage;
 import com.imarcats.microservice.order.management.order.CreateSubmittedOrderMessage;
 import com.imarcats.microservice.order.management.order.DeleteSubmittedOrderMessage;
 import com.imarcats.microservice.order.management.order.OrderAction;
@@ -100,9 +106,36 @@ public class ActionRequestor implements OrderSubmitActionRequestor, OrderCancelA
 		sendMessage(message, marketCode);
 	}
 	
+	public void openMarket(String marketCode) {
+		UpdateMessage message = new UpdateMessage();
+		OpenMarketMessage openMarketMessage = new OpenMarketMessage();
+		openMarketMessage.setMarketCode(marketCode);
+		message.setOpenMarketMessage(openMarketMessage);
+		
+		sendMessage(message, marketCode);
+	}
+
+	public void closeMarket(String marketCode) {
+		UpdateMessage message = new UpdateMessage();
+		CloseMarketMessage closeMarketMessage = new CloseMarketMessage();
+		closeMarketMessage.setMarketCode(marketCode);
+		message.setCloseMarketMessage(closeMarketMessage);
+		
+		sendMessage(message, marketCode);
+	}
+
+	public void callMarket(String marketCode, Date nextCallDate, TimeOfDayDto nextCallTime) {
+		UpdateMessage message = new UpdateMessage();
+		CallMarketMessage callMarketMessage = new CallMarketMessage();
+		callMarketMessage.setMarketCode(marketCode);
+		callMarketMessage.setNextCallDate(nextCallDate);
+		callMarketMessage.setNextCallTime(nextCallTime); 
+		message.setCallMarketMessage(callMarketMessage);
+		
+		sendMessage(message, marketCode);
+	}
+	
 	private void sendMessage(UpdateMessage message, String marketCode) {
 		orderActionMessageKafkaTemplate.send(IMARCATS_ORDER_QUEUE, marketCode, message);
 	}
-
-
 }
