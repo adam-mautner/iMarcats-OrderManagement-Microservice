@@ -144,7 +144,7 @@ public class OrderMatchingUpdateExecutor implements ConsumerSeekAware {
 			// critical system error - stop system 
 
 			// TODO: Add proper logging
-			System.out.println("Crityical error during processing message: " + e + " - stopping Order Matching system");
+			System.out.println("Critical error during processing message: " + e + " - stopping Order Matching system");
 			System.exit(1); 
 		}
 	}
