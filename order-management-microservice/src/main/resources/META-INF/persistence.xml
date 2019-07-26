@@ -137,7 +137,7 @@
 			<property name="javax.persistence.jdbc.driver"
 				value="com.mysql.jdbc.Driver" />
 			<property name="javax.persistence.jdbc.url"
-				value="jdbc:mysql://192.168.99.100:3306/mysql" />
+				value="jdbc:mysql://10.0.75.1:3306/mysql" />
 			<property name="javax.persistence.jdbc.user" value="root" />
 			<property name="javax.persistence.jdbc.password"
 				value="test_passwd" />

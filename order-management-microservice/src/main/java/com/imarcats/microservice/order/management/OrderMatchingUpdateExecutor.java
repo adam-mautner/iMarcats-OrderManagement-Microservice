@@ -15,6 +15,7 @@ import org.springframework.kafka.listener.ConsumerSeekAware;
 import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.imarcats.interfaces.client.v100.dto.types.MarketDataType;
@@ -29,16 +30,21 @@ import com.imarcats.internal.server.infrastructure.datastore.OrderDatastore;
 import com.imarcats.internal.server.interfaces.market.MarketInternal;
 import com.imarcats.internal.server.interfaces.order.OrderInternal;
 import com.imarcats.internal.server.interfaces.order.OrderManagementContext;
+import com.imarcats.microservice.order.management.notification.PropertyChangesMessage;
+import com.imarcats.model.BuyBook;
 import com.imarcats.model.BuyOrderBookEntry;
 import com.imarcats.model.Market;
 import com.imarcats.model.Order;
 import com.imarcats.model.OrderBookEntryModel;
 import com.imarcats.model.OrderBookModel;
+import com.imarcats.model.SellBook;
 import com.imarcats.model.SellOrderBookEntry;
 import com.imarcats.model.mutators.ClientOrderMutator;
 import com.imarcats.model.mutators.SystemMarketMutator;
+import com.imarcats.model.mutators.SystemOrderMutator;
 import com.imarcats.model.types.OrderType;
 
+@Component
 public class OrderMatchingUpdateExecutor implements ConsumerSeekAware {
 	// We have to set the topic to the one we set up for Kafka Docker - I know,
 	// hardcoded topic - again :)
@@ -79,27 +85,26 @@ public class OrderMatchingUpdateExecutor implements ConsumerSeekAware {
 	}
 	
 	@KafkaListener(topicPartitions = @TopicPartition(topic = IMARCATS_MARKET_CHANGE, partitionOffsets = {
-			@PartitionOffset(partition = "0", initialOffset = "0") }))
+			@PartitionOffset(partition = "0", initialOffset = "0") }), containerFactory = "kafkaListenerPropertyChangesContainerFactory")
 	@Transactional
-	public void listenToMarketChangeParition(@Payload ListenerCallUserParameters message,
+	public void listenToMarketChangeParition(@Payload PropertyChangesMessage message,
 			@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition, @Header(KafkaHeaders.OFFSET) int offset) {
-
-		processMessage(message, partition, offset, IMARCATS_MARKET_CHANGE);
+		processMessage(message.createPropertyChanges(), partition, offset, IMARCATS_MARKET_CHANGE);
 	}
 
 	@KafkaListener(topicPartitions = @TopicPartition(topic = IMARCATS_ORDER_CHANGE, partitionOffsets = {
-			@PartitionOffset(partition = "0", initialOffset = "0") }))
+			@PartitionOffset(partition = "0", initialOffset = "0") }), containerFactory = "kafkaListenerPropertyChangesContainerFactory")
 	@Transactional
-	public void listenToOrderChangeParition(@Payload ListenerCallUserParameters message,
+	public void listenToOrderChangeParition(@Payload PropertyChangesMessage message,
 			@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition, @Header(KafkaHeaders.OFFSET) int offset) {
 
-		processMessage(message, partition, offset, IMARCATS_ORDER_CHANGE);
+		processMessage(message.createPropertyChanges(), partition, offset, IMARCATS_ORDER_CHANGE);
 	}
 
 	@KafkaListener(topicPartitions = @TopicPartition(topic = IMARCATS_MARKETDATA, partitionOffsets = {
-			@PartitionOffset(partition = "0", initialOffset = "0") }))
+			@PartitionOffset(partition = "0", initialOffset = "0") }), containerFactory = "kafkaListenerMarketDataChangeContainerFactory")
 	@Transactional
-	public void listenToMarketDateParition(@Payload ListenerCallUserParameters message,
+	public void listenToMarketDateParition(@Payload MarketDataChange message,
 			@Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition, @Header(KafkaHeaders.OFFSET) int offset) {
 
 		processMessage(message, partition, offset, IMARCATS_MARKETDATA);
@@ -144,7 +149,7 @@ public class OrderMatchingUpdateExecutor implements ConsumerSeekAware {
 			// critical system error - stop system 
 
 			// TODO: Add proper logging
-			System.out.println("Critical error during processing message: " + e + " - stopping Order Matching system");
+			System.out.println("Critical error during processing message: " + e + " - stopping Order Management system");
 			System.exit(1); 
 		}
 	}
@@ -171,12 +176,20 @@ public class OrderMatchingUpdateExecutor implements ConsumerSeekAware {
 				marketInternal.getMarketModel().setLastTrade(MarketDtoMapping.INSTANCE.fromDto(message.getNewQuoteAndSize()));
 				break;
 			case LevelIIAsk:
-				OrderBookModel sellBook = marketInternal.getMarketModel().getSellBook();
+				SellBook sellBook = marketInternal.getMarketModel().getSellBook();
+				if (sellBook == null) {
+					sellBook = new SellBook();
+					marketInternal.getMarketModel().setSellBook(sellBook);
+				}
 				OrderBookEntryModel sellEntryModel = new SellOrderBookEntry();
 				updateLevel2MarketData(message, marketInternal, sellBook, sellEntryModel);
 				break;
 			case LevelIIBid:
-				OrderBookModel buyBook = marketInternal.getMarketModel().getBuyBook();
+				BuyBook buyBook = marketInternal.getMarketModel().getBuyBook();
+				if (buyBook == null) {
+					buyBook = new BuyBook();
+					marketInternal.getMarketModel().setBuyBook(buyBook);
+				}
 				OrderBookEntryModel buyEntryModel = new BuyOrderBookEntry();
 				updateLevel2MarketData(message, marketInternal, buyBook, buyEntryModel);
 				break;
@@ -194,6 +207,7 @@ public class OrderMatchingUpdateExecutor implements ConsumerSeekAware {
 		entryModel.setAggregateSize(newQuoteSize);
 		entryModel.setLimitQuote(MarketDtoMapping.INSTANCE.fromDto(message.getNewQuote()));
 		entryModel.setOrderType(OrderType.Limit);
+		entryModel.updateLastUpdateTimestamp();
 		int index = book.binarySearch(entryModel, new QuoteOrderPrecedenceRule(book.getSide(), 
 				marketInternal.getMinimumQuoteIncrement(), marketInternal.getQuoteType()));
 		if (index >= 0) {
@@ -206,14 +220,14 @@ public class OrderMatchingUpdateExecutor implements ConsumerSeekAware {
 	
 	private void processMessage(PropertyChanges message) {
 		if (message.getClassBeingChanged().equals(Market.class)) {
-			MarketInternal marketInternal = marketDatastore.findMarketBy(message.getParentObject().getCodeKey());
+			MarketInternal marketInternal = marketDatastore.findMarketBy(message.getObjectBeingChanged().getCodeKey());
 			if (marketInternal != null) {				
 				SystemMarketMutator.INSTANCE.executePropertyChanges(marketInternal.getMarketModel(), PropertyDtoMapping.INSTANCE.fromDto(message.getChanges()), null);
 			}
 		} else if (message.getClassBeingChanged().equals(Order.class)) {
-			OrderInternal orderInternal = orderDatastore.findOrderBy(message.getParentObject().getIdKey());
+			OrderInternal orderInternal = orderDatastore.findOrderBy(message.getObjectBeingChanged().getIdKey());
 			if (orderInternal != null) {				
-				ClientOrderMutator.INSTANCE.executePropertyChanges(orderInternal.getOrderModel(), PropertyDtoMapping.INSTANCE.fromDto(message.getChanges()), null);
+				SystemOrderMutator.INSTANCE.executePropertyChanges(orderInternal.getOrderModel(), PropertyDtoMapping.INSTANCE.fromDto(message.getChanges()), null);
 			}
 		}
 	}

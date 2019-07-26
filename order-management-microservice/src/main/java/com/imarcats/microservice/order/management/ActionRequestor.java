@@ -7,6 +7,7 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 import com.imarcats.interfaces.client.v100.dto.MarketDto;
+import com.imarcats.interfaces.client.v100.dto.OrderDto;
 import com.imarcats.interfaces.client.v100.dto.types.TimeOfDayDto;
 import com.imarcats.interfaces.server.v100.dto.mapping.OrderDtoMapping;
 import com.imarcats.internal.server.interfaces.order.OrderInternal;
@@ -70,7 +71,12 @@ public class ActionRequestor implements OrderSubmitActionRequestor, OrderCancelA
 		// create order in order matching before submitting it 
 		UpdateMessage message = new UpdateMessage();
 		CreateSubmittedOrderMessage createSubmittedOrderMessage = new CreateSubmittedOrderMessage();
-		createSubmittedOrderMessage.setOrder(OrderDtoMapping.INSTANCE.toDto(orderInternal_.getOrderModel()));
+		OrderDto orderDto = OrderDtoMapping.INSTANCE.toDto(orderInternal_.getOrderModel());
+		
+		// TODO: This is a hack for now 
+		orderDto.setLastUpdateTimestamp(new Date());
+		
+		createSubmittedOrderMessage.setOrder(orderDto);
 		message.setCreateSubmittedOrderMessage(createSubmittedOrderMessage);
 		
 		sendMessage(message, orderInternal_.getOrderModel().getTargetMarketCode()); 

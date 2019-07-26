@@ -57,10 +57,10 @@ public class OrderRestController {
 	
 	@Transactional
 	@RequestMapping(value = "/orders/**/{marketCode}", method = RequestMethod.POST, consumes = "application/json")
-	public void createNewOrder(@PathVariable String marketCode, @RequestBody OrderDto order) {
+	public long createNewOrder(@PathVariable String marketCode, @RequestBody OrderDto order) {
 		// TODO: Identify user
 		String user = "Adam";
-		orderManagementSystem.createOrder(marketCode, OrderDtoMapping.INSTANCE.fromDto(order), user, orderManagementContext);
+		return orderManagementSystem.createOrder(marketCode, OrderDtoMapping.INSTANCE.fromDto(order), user, orderManagementContext);
 	}
 
 	@RequestMapping(value = "/myOrders/**/{userId}", method = RequestMethod.GET, produces = { "application/JSON" })

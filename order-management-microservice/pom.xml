@@ -20,7 +20,7 @@
 	<properties>
 		<docker.image.prefix>com.imarcats</docker.image.prefix>
 		<java.version>1.8</java.version>
-		<imarcats.market.system.version>1.0.1</imarcats.market.system.version>
+		<imarcats.market.system.version>1.0.0-SNAPSHOT</imarcats.market.system.version>
 	</properties>
 
 	<build>
